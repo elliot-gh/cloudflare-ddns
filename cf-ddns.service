@@ -1,0 +1,10 @@
+[Unit]
+Description=Cloudflare DDNS Updater
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cf-ddns
+
+[Install]
+WantedBy=multi-user.target

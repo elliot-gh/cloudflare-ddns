@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# WhipeeDip/cloudflare-ddns
+# Forked from radiantly/cloudflare-update-record.sh
+# Which is an updated fork of lifehome/cloudflare-update-record.sh
+# Which was originally forked from benkulbertis/cloudflare-update-record.sh
+
+# CHANGE THESE
+prefix="[cf-ddns]"
+auth_token="auth_token_here" # Generate an API token at https://dash.cloudflare.com/profile/api-tokens with the permission dns_records:edit
+zone_identifier="zone_here" # Can be found in the "Overview" tab of your domain
+record_names=("example.com" "subdomain.example.com") # Records to update
+declare -A proxied=( ["example.com"]="false" ["subdomain.example.com"]="true" ) # must be true/false
+
+echo "${prefix} Started"
+
+# get IP and make sure we get a valid response
+ip=$(curl -s https://ipv4.icanhazip.com/)
+echo "${prefix} Got IP: ${ip}"
+if [[ -z "$ip" || ! "$ip" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+    >&2 echo "${prefix} Didn't get a valid IPv4! Exiting..."
+    exit 1
+fi
+
+echo "${prefix} Beginning main loop"
+for record_name in "${record_names[@]}"; do
+    echo -e "\n[cfupdater] ---------- ${record_name} ----------"
+
+    # Seek for the record
+    echo "${prefix} Getting existing record from Cloudflare"
+    record=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${zone_identifier}/dns_records?name=${record_name}" -H "Authorization: Bearer ${auth_token}" -H "Content-Type: application/json")
+
+    # Can't do anything without the record
+    if [[ "$record" == *"\"count\":0"* ]]; then
+        >&2 echo "${prefix} Record does not exist, perhaps create one first?"
+        continue
+    fi
+
+    # Set existing IP address from the fetched record
+    old_ip=$(echo "$record" | grep -Po '(?<="content":")[^"]*' | head -1)
+
+    # Compare if they're the same
+    if [ "$ip" == "$old_ip" ]; then
+        echo "${prefix} IP has not changed."
+        continue
+    fi
+
+    # Set the record identifier from result
+    record_identifier=$(echo "$record" | grep -Po '(?<="id":")[^"]*' | head -1)
+
+    # The execution of update
+    echo "${prefix} Updaing DNS"
+    update=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${zone_identifier}/dns_records/${record_identifier}" -H "Authorization: Bearer $auth_token" -H "Content-Type: application/json" --data "{\"id\":\"$zone_identifier\",\"type\":\"A\",\"proxied\":${proxied[$record_name]},\"name\":\"$record_name\",\"content\":\"$ip\"}")
+
+    # The moment of truth
+    case "$update" in
+    *"\"success\":true"*)
+        echo "${prefix} IPv4 context '${ip}' has been synced to Cloudflare."
+        continue
+        ;;
+    *)
+        >&2 echo -e "${prefix} Update failed for ${record_identifier}. DUMPING RESULTS:\n${update}"
+        ;;
+    esac
+done
