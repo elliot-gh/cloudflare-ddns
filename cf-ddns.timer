@@ -1,8 +1,10 @@
 [Unit]
-Description=Run cf-ddns.service every 15 minutes
+Description=Timer for cf-ddns.service
 
 [Timer]
+OnBootSec=300
 OnCalendar=*:0/15
+Persistent=true
 
 [Install]
 WantedBy=timers.target

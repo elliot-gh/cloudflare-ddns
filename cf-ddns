@@ -5,14 +5,19 @@
 # Which is an updated fork of lifehome/cloudflare-update-record.sh
 # Which was originally forked from benkulbertis/cloudflare-update-record.sh
 
-# CHANGE THESE
 prefix="[cf-ddns]"
-auth_token="auth_token_here" # Generate an API token at https://dash.cloudflare.com/profile/api-tokens with the permission dns_records:edit
-zone_identifier="zone_here" # Can be found in the "Overview" tab of your domain
-record_names=("example.com" "subdomain.example.com") # Records to update
-declare -A proxied=( ["example.com"]="false" ["subdomain.example.com"]="true" ) # must be true/false
+
+config_path="/root/.secrets/cf-ddns/cf-ddns.config" # Change this as needed!
 
 echo "${prefix} Started"
+
+echo "Reading config file at ${config_path}"
+source $config_path
+# TODO: check proxied
+if [[ -z "$auth_token" || -z "$zone_identifier" || -z "$record_names" || -z "$ttl" ]]; then
+    >&2 echo "One or more config entries are missing. Please double check they're correctly set."
+    exit 1
+fi
 
 # get IP and make sure we get a valid response
 ip=$(curl -s https://ipv4.icanhazip.com/)
@@ -24,15 +29,15 @@ fi
 
 echo "${prefix} Beginning main loop"
 for record_name in "${record_names[@]}"; do
-    echo -e "\n[cfupdater] ---------- ${record_name} ----------"
+    echo -e "\n${prefix} ---------- ${record_name} ----------"
 
     # Seek for the record
     echo "${prefix} Getting existing record from Cloudflare"
     record=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${zone_identifier}/dns_records?name=${record_name}" -H "Authorization: Bearer ${auth_token}" -H "Content-Type: application/json")
 
     # Can't do anything without the record
-    if [[ "$record" == *"\"count\":0"* ]]; then
-        >&2 echo "${prefix} Record does not exist, perhaps create one first?"
+    if [[ ! "$record" == *"success\":true"* || "$record" == *"\"count\":0"* ]]; then
+        >&2 echo -e "${prefix} Getting existing record failed for ${record_name}. DUMPING RESULTS:\n${record}"
         continue
     fi
 
@@ -50,7 +55,7 @@ for record_name in "${record_names[@]}"; do
 
     # The execution of update
     echo "${prefix} Updaing DNS"
-    update=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${zone_identifier}/dns_records/${record_identifier}" -H "Authorization: Bearer $auth_token" -H "Content-Type: application/json" --data "{\"id\":\"$zone_identifier\",\"type\":\"A\",\"proxied\":${proxied[$record_name]},\"name\":\"$record_name\",\"content\":\"$ip\"}")
+    update=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${zone_identifier}/dns_records/${record_identifier}" -H "Authorization: Bearer ${auth_token}" -H "Content-Type: application/json" --data "{\"type\":\"A\",\"proxied\":${proxied[$record_name]},\"name\":\"${record_name}\",\"content\":\"${ip}\", \"ttl\":\"${ttl}\"}")
 
     # The moment of truth
     case "$update" in
