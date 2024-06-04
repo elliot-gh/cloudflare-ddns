@@ -55,7 +55,7 @@ for record_name in "${record_names[@]}"; do
 
     # The execution of update
     echo "${prefix} Updaing DNS"
-    update=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${zone_identifier}/dns_records/${record_identifier}" -H "Authorization: Bearer ${auth_token}" -H "Content-Type: application/json" --data "{\"type\":\"A\",\"proxied\":${proxied[$record_name]},\"name\":\"${record_name}\",\"content\":\"${ip}\", \"ttl\":\"${ttl}\"}")
+    update=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${zone_identifier}/dns_records/${record_identifier}" -H "Authorization: Bearer ${auth_token}" -H "Content-Type: application/json" --data "{\"type\":\"A\",\"proxied\":${proxied[$record_name]},\"name\":\"${record_name}\",\"content\":\"${ip}\", \"ttl\":${ttl}}")
 
     # The moment of truth
     case "$update" in
