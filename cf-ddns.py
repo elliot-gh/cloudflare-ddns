@@ -16,7 +16,7 @@ import urllib.request
 PREFIX = "[cf-ddns]"
 
 # Change this as needed or pass arg
-CONFIG_PATH = "/root/.secrets/cf-ddns/cf-ddns.config"
+CONFIG_PATH = "/root/.secrets/cf-ddns/cf-ddns.config.json"
 
 IP_SERVICE = "https://ipv4.icanhazip.com/"
 CF_API = "https://api.cloudflare.com/client/v4"
