@@ -1,0 +1,20 @@
+{
+  "ttl": 1,
+  "domains": {
+    "example1.com": {
+      "auth_token": "auth_token_here",
+      "zone_identifier": "zone_id_here",
+      "records": {
+        "example1.com": { "proxied": false },
+        "a.example1.com": { "proxied": true }
+      }
+    },
+    "example2.com": {
+      "auth_token": "another_auth_token_here",
+      "zone_identifier": "another_zone_id_here",
+      "records": {
+        "example2.com": { "proxied": false }
+      }
+    }
+  }
+}
